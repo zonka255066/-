@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artale 戒指精選卷軸模擬轉蛋</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        h3 {
+            text-align: center;
+            color: #7f8c8d;
+            font-weight: normal;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-draw {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-draw:hover {
+            background-color: #2980b9;
+        }
+        .btn-draw-100 {
+            background-color: #e67e22;
+            color: white;
+        }
+        .btn-draw-100:hover {
+            background-color: #d35400;
+        }
+        .btn-clear {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn-clear:hover {
+            background-color: #7f8c8d;
+        }
+        .option-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .results-box {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            background-color: #fafafa;
+        }
+        .result-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+        .highlight-ssr {
+            background-color: #f1c40f;
+            color: #2c3e50;
+            font-weight: bold;
+            border: 1px solid #f39c12;
+        }
+        .highlight-sr {
+            background-color: #e8f4fd;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Artale 轉蛋模擬器</h1>
+    <h3>戒指精選卷軸轉蛋券 I（活動限定）</h3>
+
+    <div class="btn-group">
+        <button class="btn-draw" onclick="simulateDraw(1)">單抽</button>
+        <button class="btn-draw" onclick="simulateDraw(10)">10 連抽</button>
+        <button class="btn-draw-100" onclick="simulateDraw(100)">100 連抽</button>
+        <button class="btn-clear" onclick="clearResults()">清除結果</button>
+    </div>
+
+    <div class="option-group">
+        <input type="checkbox" id="mergeItems" checked>
+        <label for="mergeItems">合併同類品項（加總顯示數量）</label>
+    </div>
+
+    <div class="results-box">
+        <div class="result-title">開獎結果：</div>
+        <ul id="resultsList">
+            <span style="color:#aaa;">點擊上方按鈕開始抽獎...</span>
+        </ul>
+    </div>
+</div>
+
+<script>
+// 依據提供數據建立的機率表 (相對權重 / 百分比)
+const gachaPool = [
+    { name: "戒指卷軸箱", prob: 0.0008333331607, isSsr: true },
+    { name: "臉部裝飾力量卷軸30%", prob: 0.008333331607 },
+    { name: "臉部裝飾幸運卷軸30%", prob: 0.008333331607 },
+    { name: "眼部裝飾力量卷軸30%", prob: 0.01249999968 },
+    { name: "腰帶敏捷卷軸30%", prob: 0.01249999968 },
+    { name: "墜飾力量卷軸30%", prob: 0.01249999968 },
+    { name: "眼部裝飾幸運卷軸30%", prob: 0.01249999968 },
+    { name: "腰帶幸運卷軸30%", prob: 0.02000000222 },
+    { name: "墜飾智力卷軸30%", prob: 0.02000000222 },
+    { name: "套服力量詛咒卷軸30%", prob: 0.02000000222 },
+    { name: "下衣敏捷性卷軸30%", prob: 0.02000000222 },
+    { name: "耳環智力卷軸30%", prob: 0.02000000222 },
+    { name: "套服幸運詛咒卷軸30%", prob: 0.03333333552 },
+    { name: "頭盔智力卷軸30%", prob: 0.03333333552 },
+    { name: "披風敏捷性卷軸30%", prob: 0.03333333552 },
+    { name: "上衣力量卷軸30%", prob: 0.03333333552 },
+    { name: "短杖魔力卷軸30%", prob: 0.03333333552 },
+    { name: "套服敏捷詛咒卷軸30%", prob: 0.03333333552 },
+    { name: "披風智力卷軸30%", prob: 0.0888888917 },
+    { name: "矛攻擊力卷軸30%", prob: 0.0888888917 },
+    { name: "短劍攻擊力卷軸30%", prob: 0.0888888917 },
+    { name: "指虎攻擊力卷軸30%", prob: 0.0888888917 },
+    { name: "鞋子跳躍力卷軸30%", prob: 0.0888888917 },
+    { name: "指虎命中率卷軸30%", prob: 0.0888888917 },
+    { name: "弩攻擊力卷軸30%", prob: 0.0888888917 },
+    { name: "鞋子移動速度卷軸30%", prob: 0.0888888917 },
+    { name: "下衣跳躍卷軸30%", prob: 0.0888888917 },
+    { name: "下衣體力卷軸30%", prob: 1.758946425 },
+    { name: "單手劍命中率卷軸30%", prob: 1.758946425 },
+    { name: "手套體力卷軸30%", prob: 1.758946425 },
+    { name: "單手劍攻擊力卷軸30%", prob: 1.758946425 },
+    { name: "盾牌防禦力卷軸30%", prob: 1.758946425 },
+    { name: "下衣防禦力卷軸30%", prob: 1.758946425 },
+    { name: "上衣防禦力卷軸30%", prob: 2.058946425 },
+    { name: "頭盔防禦卷軸30%", prob: 2.058946425 },
+    { name: "披風物理防禦力卷軸30%", prob: 2.058946425 },
+    { name: "單手斧命中率卷軸30%", prob: 2.058946425 },
+    { name: "單手棍命中率卷軸30%", prob: 2.058946425 },
+    { name: "雙手棍攻擊力卷軸30%", prob: 2.058946425 },
+    { name: "披風魔法防禦力卷軸30%", prob: 2.058946425 },
+    { name: "槍命中率卷軸30%", prob: 2.058946425 },
+    { name: "超級藥水10個(可交易)", prob: 6.0214375, isDrink: true },
+    { name: "超級藥水15個(可交易)", prob: 5.8714375, isDrink: true },
+    { name: "超級藥水20個(可交易)", prob: 5.7214375, isDrink: true },
+    { name: "黃昏之露10個(可交易)", prob: 6.1714375, isDrink: true },
+    { name: "黃昏之露30個(可交易)", prob: 6.0214375, isDrink: true },
+    { name: "黃昏之露50個(可交易)", prob: 5.8714375, isDrink: true },
+    { name: "清晨之露20個(可交易)", prob: 6.1714375, isDrink: true },
+    { name: "清晨之露40個(可交易)", prob: 6.0214375, isDrink: true },
+    { name: "清晨之露60個(可交易)", prob: 5.8714375, isDrink: true },
+    { name: "馴鹿奶30個(可交易)", prob: 6.1714375, isDrink: true },
+    { name: "馴鹿奶50個(可交易)", prob: 6.0214375, isDrink: true },
+    { name: "馴鹿奶70個(可交易)", prob: 5.8714375, isDrink: true }
+];
+
+// 計算總機率權重 (應該接近 100)
+const totalWeight = gachaPool.reduce((sum, item) => sum + item.prob, 0);
+
+// 單次相對隨機抽卡核心演算法
+function drawOne() {
+    let randomNum = Math.random() * totalWeight;
+    let currentSum = 0;
+
+    for (let i = 0; i < gachaPool.length; i++) {
+        currentSum += gachaPool[i].prob;
+        if (randomNum <= currentSum) {
+            return gachaPool[i];
+        }
+    }
+    return gachaPool[gachaPool.length - 1]; // 備用防呆
+}
+
+// 執行抽獎
+function simulateDraw(times) {
+    const merge = document.getElementById('mergeItems').checked;
+    const resultsList = document.getElementById('resultsList');
+    resultsList.innerHTML = ''; // 清空舊結果
+
+    let rawResults = [];
+    for (let i = 0; i < times; i++) {
+        rawResults.push(drawOne());
+    }
+
+    if (merge) {
+        // 合併同類項顯示
+        let summary = {};
+        rawResults.forEach(item => {
+            if (summary[item.name]) {
+                summary[item.name].count += 1;
+            } else {
+                summary[item.name] = { ...item, count: 1 };
+            }
+        });
+
+        // 轉換為陣列並排序（由多到少，SSR優先）
+        let sortedResults = Object.values(summary).sort((a, b) => {
+            if (a.isSsr) return -1;
+            if (b.isSsr) return 1;
+            return b.count - a.count;
+        });
+
+        sortedResults.forEach(item => {
+            appendResultDOM(item.name, item.count, item.isSsr, item.isDrink);
+        });
+    } else {
+        // 單筆條列式顯示
+        rawResults.forEach((item, index) => {
+            appendResultDOM(`#${index + 1} - ${item.name}`, 1, item.isSsr, item.isDrink);
+        });
+    }
+}
+
+// 渲染到網頁
+function appendResultDOM(name, count, isSsr, isDrink) {
+    const resultsList = document.getElementById('resultsList');
+    const li = document.createElement('li');
+    
+    if (isSsr) {
+        li.className = 'highlight-ssr';
+        li.innerHTML = `<span>★超稀有★ ${name}</span><span>${count} 個</span>`;
+    } else if (!isDrink) {
+        li.className = 'highlight-sr';
+        li.innerHTML = `<span>${name}</span><span>${count} 個</span>`;
+    } else {
+        li.innerHTML = `<span>${name}</span><span>${count} 個</span>`;
+    }
+    
+    resultsList.appendChild(li);
+}
+
+// 清除
+function clearResults() {
+    document.getElementById('resultsList').innerHTML = '<span style="color:#aaa;">點擊上方按鈕開始抽獎...</span>';
+}
+</script>
+
+</body>
+</html>
